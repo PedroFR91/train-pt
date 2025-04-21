@@ -302,17 +302,14 @@ export function LandingPage() {
     <div className='min-h-screen bg-black text-white'>
       {/* Hero Section */}
       <section className='relative h-screen flex items-center justify-center overflow-hidden'>
-        <video
-          autoPlay
-          loop
-          muted
-          className='absolute w-auto min-w-full min-h-full max-w-none opacity-30'>
-          <source
-            src='https://videos.pexels.com/video-files/4057408/4057408-uhd_2732_1440_25fps.mp4'
-            type='video/mp4'
+        <div className='absolute inset-0 w-full h-full'>
+          <img
+            src='/images/trainer-with-tablet.png'
+            alt='Entrenador personal usando tablet'
+            className='w-full h-full object-cover opacity-30'
           />
-          Your browser does not support the video tag.
-        </video>
+          <div className='absolute inset-0 bg-black/50'></div>
+        </div>
         <div className='relative z-10 text-center max-w-4xl px-4'>
           <h1 className='text-6xl md:text-8xl font-bold mb-2 tracking-tighter'>
             ENTRENA COMO SIEMPRE
@@ -372,22 +369,22 @@ export function LandingPage() {
           </p>
 
           <Tabs defaultValue={features[0].id} className='max-w-5xl mx-auto'>
-            <TabsList className='grid w-full grid-cols-2 md:grid-cols-4 mb-12 bg-[#111]'>
+            <TabsList className='w-full grid grid-cols-4 mb-6 bg-[#111]'>
               {features.slice(0, 4).map((feature) => (
                 <TabsTrigger
                   key={feature.id}
                   value={feature.id}
-                  className='text-lg py-3 data-[state=active]:bg-[#FF0000] data-[state=active]:text-white'>
+                  className='text-sm md:text-base lg:text-lg py-3 px-2 data-[state=active]:bg-[#FF0000] data-[state=active]:text-white whitespace-nowrap'>
                   {feature.title}
                 </TabsTrigger>
               ))}
             </TabsList>
-            <TabsList className='grid w-full grid-cols-3 mb-12 bg-[#111]'>
+            <TabsList className='w-full grid grid-cols-3 mb-12 bg-[#111]'>
               {features.slice(4).map((feature) => (
                 <TabsTrigger
                   key={feature.id}
                   value={feature.id}
-                  className='text-lg py-3 data-[state=active]:bg-[#FF0000] data-[state=active]:text-white'>
+                  className='text-sm md:text-base lg:text-lg py-3 px-2 data-[state=active]:bg-[#FF0000] data-[state=active]:text-white whitespace-nowrap'>
                   {feature.title}
                 </TabsTrigger>
               ))}
