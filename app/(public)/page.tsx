@@ -11,10 +11,10 @@ export default function HomePage() {
           variant='outline'
           className='bg-background/80 backdrop-blur-sm'
           asChild>
-          <Link href='/auth/login'>Iniciar Sesión</Link>
+          <Link href='/login'>Iniciar Sesión</Link>
         </Button>
         <Button className='bg-primary/80 backdrop-blur-sm' asChild>
-          <Link href='/auth/register'>Registrarse</Link>
+          <Link href='/register'>Registrarse</Link>
         </Button>
       </div>
     </div>

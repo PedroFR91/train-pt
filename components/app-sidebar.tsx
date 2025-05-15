@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import {
   Home,
@@ -14,10 +14,10 @@ import {
   MessageCircle,
   Settings,
   LogOut,
-} from "lucide-react"
-import { usePathname, useRouter } from "next/navigation"
-import Link from "next/link"
-import { useAuth } from "@/contexts/auth-context"
+} from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import Link from "next/link";
+import { useAuth } from "@/contexts/auth-context";
 
 import {
   Sidebar,
@@ -30,27 +30,27 @@ import {
   SidebarGroup,
   SidebarGroupContent,
   SidebarFooter,
-} from "@/components/ui/sidebar"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Button } from "@/components/ui/button"
-import { NotificationDropdown } from "@/components/notifications/notification-dropdown"
+} from "@/components/ui/sidebar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { NotificationDropdown } from "@/components/notifications/notification-dropdown";
 
 export function AppSidebar() {
-  const pathname = usePathname()
-  const router = useRouter()
-  const { user, logout, isTrainer, isClient } = useAuth()
+  const pathname = usePathname();
+  const router = useRouter();
+  const { user, logout, isTrainer, isClient } = useAuth();
 
   // Menú para entrenadores
   const trainerMenuItems = [
     { title: "Dashboard", icon: Home, href: "/dashboard" },
-    { title: "Clientes", icon: Users, href: "/clients" },
-    { title: "Rutinas", icon: Dumbbell, href: "/routines" },
-    { title: "Dietas", icon: Utensils, href: "/diets" },
-    { title: "Formularios", icon: FileText, href: "/forms" },
-    { title: "Archivos", icon: FolderOpen, href: "/files" },
-    { title: "Mensajes", icon: MessageCircle, href: "/messages" },
+    // { title: "Clientes", icon: Users, href: "/clients" },
+    // { title: "Rutinas", icon: Dumbbell, href: "/routines" },
+    // { title: "Dietas", icon: Utensils, href: "/diets" },
+    // { title: "Formularios", icon: FileText, href: "/forms" },
+    // { title: "Archivos", icon: FolderOpen, href: "/files" },
+    // { title: "Mensajes", icon: MessageCircle, href: "/messages" },
     { title: "Mi Perfil", icon: User, href: "/profile" },
-  ]
+  ];
 
   // Menú para clientes
   const clientMenuItems = [
@@ -62,22 +62,22 @@ export function AppSidebar() {
     { title: "Mis Archivos", icon: FolderOpen, href: "/my-files" },
     { title: "Mensajes", icon: MessageCircle, href: "/messages" },
     { title: "Buscar Entrenadores", icon: Search, href: "/trainers" },
-  ]
+  ];
 
   // Determinar qué menú mostrar según el rol
-  const menuItems = isTrainer() ? trainerMenuItems : clientMenuItems
+  const menuItems = isTrainer() ? trainerMenuItems : clientMenuItems;
 
   const handleLogout = async () => {
-    await logout()
-    router.push("/auth/login")
-  }
+    await logout();
+    router.push("/auth/login");
+  };
 
   return (
     <Sidebar>
-      <SidebarHeader className="flex items-center justify-between p-4">
-        <div className="flex items-center gap-2">
-          <img src="/logo.svg" alt="Train PT" className="h-8 w-8" />
-          <span className="font-bold text-lg">Train PT</span>
+      <SidebarHeader className='flex items-center justify-between p-4'>
+        <div className='flex items-center gap-2'>
+          <img src='/logo.svg' alt='Train PT' className='h-8 w-8' />
+          <span className='font-bold text-lg'>Train PT</span>
         </div>
         <NotificationDropdown />
       </SidebarHeader>
@@ -89,9 +89,12 @@ export function AppSidebar() {
             <SidebarMenu>
               {menuItems.map((item) => (
                 <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton asChild isActive={pathname === item.href} tooltip={item.title}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={pathname === item.href}
+                    tooltip={item.title}>
                     <Link href={item.href}>
-                      <item.icon className="h-5 w-5" />
+                      <item.icon className='h-5 w-5' />
                       <span>{item.title}</span>
                     </Link>
                   </SidebarMenuButton>
@@ -107,17 +110,23 @@ export function AppSidebar() {
             <SidebarGroupContent>
               <SidebarMenu>
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={pathname === "/profile/rates"} tooltip="Tarifas">
-                    <Link href="/profile/rates">
-                      <Settings className="h-5 w-5" />
+                  <SidebarMenuButton
+                    asChild
+                    isActive={pathname === "/profile/rates"}
+                    tooltip='Tarifas'>
+                    <Link href='/profile/rates'>
+                      <Settings className='h-5 w-5' />
                       <span>Tarifas</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={pathname === "/profile/public"} tooltip="Perfil Público">
-                    <Link href="/profile/public">
-                      <User className="h-5 w-5" />
+                  <SidebarMenuButton
+                    asChild
+                    isActive={pathname === "/profile/public"}
+                    tooltip='Perfil Público'>
+                    <Link href='/profile/public'>
+                      <User className='h-5 w-5' />
                       <span>Perfil Público</span>
                     </Link>
                   </SidebarMenuButton>
@@ -133,17 +142,23 @@ export function AppSidebar() {
             <SidebarGroupContent>
               <SidebarMenu>
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={pathname === "/subscription"} tooltip="Suscripción">
-                    <Link href="/subscription">
-                      <Calendar className="h-5 w-5" />
+                  <SidebarMenuButton
+                    asChild
+                    isActive={pathname === "/subscription"}
+                    tooltip='Suscripción'>
+                    <Link href='/subscription'>
+                      <Calendar className='h-5 w-5' />
                       <span>Suscripción</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={pathname === "/profile"} tooltip="Mi Perfil">
-                    <Link href="/profile">
-                      <User className="h-5 w-5" />
+                  <SidebarMenuButton
+                    asChild
+                    isActive={pathname === "/profile"}
+                    tooltip='Mi Perfil'>
+                    <Link href='/profile'>
+                      <User className='h-5 w-5' />
                       <span>Mi Perfil</span>
                     </Link>
                   </SidebarMenuButton>
@@ -154,29 +169,33 @@ export function AppSidebar() {
         )}
       </SidebarContent>
 
-      <SidebarFooter className="p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Avatar className="h-8 w-8">
-              <AvatarImage src={user?.picture || undefined} alt={user?.firstName} />
+      <SidebarFooter className='p-4'>
+        <div className='flex items-center justify-between'>
+          <div className='flex items-center gap-2'>
+            <Avatar className='h-8 w-8'>
+              <AvatarImage
+                src={user?.picture || undefined}
+                alt={user?.firstName}
+              />
               <AvatarFallback>
                 {user?.firstName?.charAt(0)}
                 {user?.lastName?.charAt(0)}
               </AvatarFallback>
             </Avatar>
             <div>
-              <p className="text-sm font-medium">
+              <p className='text-sm font-medium'>
                 {user?.firstName} {user?.lastName}
               </p>
-              <p className="text-xs text-muted-foreground">{isTrainer() ? "Entrenador" : "Cliente"}</p>
+              <p className='text-xs text-muted-foreground'>
+                {isTrainer() ? "Entrenador" : "Cliente"}
+              </p>
             </div>
           </div>
-          <Button variant="ghost" size="icon" onClick={handleLogout}>
-            <LogOut className="h-5 w-5" />
+          <Button variant='ghost' size='icon' onClick={handleLogout}>
+            <LogOut className='h-5 w-5' />
           </Button>
         </div>
       </SidebarFooter>
     </Sidebar>
-  )
+  );
 }
-

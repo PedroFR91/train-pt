@@ -11,8 +11,6 @@ import {
 import { useRouter } from "next/navigation";
 import axios from "axios";
 import { userService, type UserData } from "@/services/user-service";
-// Se elimina la importación del mock API
-// import { mockApi } from "@/lib/mock-api";
 
 // API base URL from environment variable
 const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
