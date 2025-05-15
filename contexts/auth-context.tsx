@@ -254,9 +254,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       }));
 
       // Redirect to OTP verification
-      router.push(
-        "/auth/verify-otp?email=" + encodeURIComponent(userData.email)
-      );
+      router.push("/verify-otp?email=" + encodeURIComponent(userData.email));
     } catch (error: any) {
       console.error("Registration error:", error);
       setState((prev) => ({
