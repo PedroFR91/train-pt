@@ -1,7 +1,6 @@
 "use client";
 
-import type React from "react";
-import {
+import React, {
   createContext,
   useState,
   useContext,
@@ -13,9 +12,10 @@ import axios from "axios";
 import { userService, type UserData } from "@/services/user-service";
 
 // API base URL from environment variable
-const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL!;
+axios.defaults.baseURL = API_URL;
 
-// Types
+// Extiende UserData con el campo role
 export type User = UserData & {
   role: "client" | "trainer" | "admin";
 };
@@ -32,11 +32,11 @@ type AuthState = {
 
 type AuthContextType = AuthState & {
   login: (email: string) => Promise<void>;
-  register: (userData: RegisterData) => Promise<void>;
+  register: (data: RegisterData) => Promise<void>;
   verifyOtp: (email: string, otp: string) => Promise<void>;
   logout: () => Promise<void>;
   clearError: () => void;
-  updateUser: (userData: Partial<User>) => Promise<void>;
+  updateUser: (data: Partial<User>) => Promise<void>;
   isTrainer: () => boolean;
   isClient: () => boolean;
   isAdmin: () => boolean;
@@ -50,10 +50,8 @@ type RegisterData = {
   role: "client" | "trainer";
 };
 
-// Create the context
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Provider component
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
@@ -67,342 +65,259 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     otpSent: false,
     isAuthenticated: false,
   });
-  const [user, setUser] = useState<UserData | null>(null);
 
-  // Initialize auth state from localStorage on mount
+  // 1) Al montar, inicializa desde localStorage o API
   useEffect(() => {
     const initAuth = async () => {
       const accessToken = localStorage.getItem("accessToken");
       const refreshToken = localStorage.getItem("refreshToken");
       const userStr = localStorage.getItem("user");
 
-      if (accessToken) {
-        try {
-          setState((prev) => ({ ...prev, loading: true }));
+      if (!accessToken) {
+        setState((s) => ({ ...s, loading: false }));
+        return;
+      }
 
-          // Configure axios with the token
-          axios.defaults.headers.common[
-            "Authorization"
-          ] = `Bearer ${accessToken}`;
+      axios.defaults.headers.common["Authorization"] = `Bearer ${accessToken}`;
 
-          // If we have user data in localStorage, use it
-          if (userStr && userStr !== "undefined") {
-            const userData = JSON.parse(userStr);
-            setState({
-              user: userData,
-              accessToken,
-              refreshToken,
-              loading: false,
-              error: null,
-              otpSent: false,
-              isAuthenticated: true,
-            });
-          } else {
-            // Fetch user data from la API real
-            const response = await axios.get(`${API_URL}/auth/me`);
-            setState({
-              user: response.data,
-              accessToken,
-              refreshToken,
-              loading: false,
-              error: null,
-              otpSent: false,
-              isAuthenticated: true,
-            });
-            localStorage.setItem("user", JSON.stringify(response.data));
-          }
-        } catch (error) {
-          console.error("Error fetching user data:", error);
-          localStorage.removeItem("accessToken");
-          localStorage.removeItem("refreshToken");
-          localStorage.removeItem("user");
-          setState({
-            user: null,
-            accessToken: null,
-            refreshToken: null,
-            loading: false,
-            error: null,
-            otpSent: false,
-            isAuthenticated: false,
-          });
+      try {
+        let user: User;
+        if (userStr) {
+          user = JSON.parse(userStr);
+        } else {
+          // Uso de tu servicio para perfil propio
+          const res = await userService.getCurrentUserProfile();
+          user = res.data as User;
+          localStorage.setItem("user", JSON.stringify(user));
         }
-      } else {
-        setState((prev) => ({ ...prev, loading: false }));
+
+        setState({
+          user,
+          accessToken,
+          refreshToken,
+          loading: false,
+          error: null,
+          otpSent: false,
+          isAuthenticated: true,
+        });
+      } catch (err) {
+        console.error("initAuth error", err);
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("refreshToken");
+        localStorage.removeItem("user");
+        setState({
+          user: null,
+          accessToken: null,
+          refreshToken: null,
+          loading: false,
+          error: null,
+          otpSent: false,
+          isAuthenticated: false,
+        });
       }
     };
 
     initAuth();
   }, []);
 
-  // Check for tokens in URL (for Google OAuth callback)
+  // 2) Handler para callback de OAuth (Google, etc)
   useEffect(() => {
-    const handleOAuthCallback = () => {
-      if (typeof window !== "undefined") {
-        const urlParams = new URLSearchParams(window.location.search);
-        const accessToken = urlParams.get("accessToken");
-        const refreshToken = urlParams.get("refreshToken");
+    const handleOAuth = async () => {
+      if (typeof window === "undefined") return;
+      const params = new URLSearchParams(window.location.search);
+      const at = params.get("accessToken");
+      const rt = params.get("refreshToken");
+      if (!at || !rt) return;
 
-        if (accessToken && refreshToken) {
-          // Store tokens
-          localStorage.setItem("accessToken", accessToken);
-          localStorage.setItem("refreshToken", refreshToken);
+      localStorage.setItem("accessToken", at);
+      localStorage.setItem("refreshToken", rt);
+      axios.defaults.headers.common["Authorization"] = `Bearer ${at}`;
 
-          // Update auth state
-          setState((prev) => ({
-            ...prev,
-            accessToken,
-            refreshToken,
-            isAuthenticated: true,
-            loading: true,
-          }));
+      setState((s) => ({
+        ...s,
+        accessToken: at,
+        refreshToken: rt,
+        loading: true,
+        isAuthenticated: true,
+      }));
+      window.history.replaceState({}, document.title, window.location.pathname);
 
-          // Clean URL
-          window.history.replaceState(
-            {},
-            document.title,
-            window.location.pathname
-          );
-
-          // Fetch user data
-          axios.defaults.headers.common[
-            "Authorization"
-          ] = `Bearer ${accessToken}`;
-          axios
-            .get(`${API_URL}/auth/me`)
-            .then((response) => {
-              setState((prev) => ({
-                ...prev,
-                user: response.data,
-                loading: false,
-              }));
-            })
-            .catch((error) => {
-              console.error("Error fetching user data after OAuth:", error);
-              setState((prev) => ({
-                ...prev,
-                error: "Failed to fetch user data",
-                loading: false,
-              }));
-            });
-        }
+      try {
+        const res = await userService.getCurrentUserProfile();
+        const u = res.data as User;
+        localStorage.setItem("user", JSON.stringify(u));
+        setState((s) => ({ ...s, user: u, loading: false, error: null }));
+      } catch (err) {
+        console.error("OAuth fetch user error", err);
+        setState((s) => ({
+          ...s,
+          error: "Failed to fetch user data",
+          loading: false,
+        }));
       }
     };
 
-    handleOAuthCallback();
+    handleOAuth();
   }, []);
 
-  // Login function - sends OTP
+  // 3) Enviar OTP (login)
   const login = async (email: string) => {
+    setState((s) => ({ ...s, loading: true, error: null }));
     try {
-      setState((prev) => ({ ...prev, loading: true, error: null }));
+      const res = await axios.post("/auth/login", { email });
+      const { accessToken, refreshToken } = res.data;
+      localStorage.setItem("accessToken", accessToken);
+      localStorage.setItem("refreshToken", refreshToken);
+      axios.defaults.headers.common["Authorization"] = `Bearer ${accessToken}`;
 
-      const response = await axios.post(`${API_URL}/auth/login`, { email });
-
-      // Store tokens temporarily
-      localStorage.setItem("accessToken", response.data.accessToken);
-      localStorage.setItem("refreshToken", response.data.refreshToken);
-
-      setState((prev) => ({
-        ...prev,
-        accessToken: response.data.accessToken,
-        refreshToken: response.data.refreshToken,
+      setState((s) => ({
+        ...s,
+        accessToken,
+        refreshToken,
         loading: false,
         otpSent: true,
         error: null,
       }));
-
-      // Redirect to OTP verification page
-      router.push("/verify-otp?email=" + encodeURIComponent(email));
-    } catch (error: any) {
-      console.error("Login error:", error);
-
-      // Handle "User Not Found" error specifically
-      if (error.response?.data?.nextStep === "register") {
-        setState((prev) => ({
-          ...prev,
+      router.push(`/verify-otp?email=${encodeURIComponent(email)}`);
+    } catch (err: any) {
+      console.error("login error", err);
+      if (err.response?.data?.nextStep === "register") {
+        setState((s) => ({
+          ...s,
           loading: false,
-          error: "User not found. Please register first.",
+          error: "Usuario no encontrado. Regístrate primero.",
         }));
-        router.push("/auth/register?email=" + encodeURIComponent(email));
+        router.push(`/auth/register?email=${encodeURIComponent(email)}`);
       } else {
-        setState((prev) => ({
-          ...prev,
+        setState((s) => ({
+          ...s,
           loading: false,
-          error:
-            error.response?.data?.error || error.message || "Failed to login",
+          error: err.response?.data?.error || err.message,
         }));
       }
     }
   };
 
-  // Register function
-  const register = async (userData: RegisterData) => {
+  // 4) Registro + OTP
+  const register = async (data: RegisterData) => {
+    setState((s) => ({ ...s, loading: true, error: null }));
     try {
-      setState((prev) => ({ ...prev, loading: true, error: null }));
-
-      const response = await axios.post(`${API_URL}/auth/register`, userData);
-
-      // Store token
-      localStorage.setItem("accessToken", response.data.token);
-
-      setState((prev) => ({
-        ...prev,
-        accessToken: response.data.token,
+      const res = await axios.post("/auth/register", data);
+      const token = res.data.token;
+      localStorage.setItem("accessToken", token);
+      axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+      setState((s) => ({
+        ...s,
+        accessToken: token,
         loading: false,
         otpSent: true,
-        error: null,
       }));
-
-      // Redirect to OTP verification
-      router.push("/verify-otp?email=" + encodeURIComponent(userData.email));
-    } catch (error: any) {
-      console.error("Registration error:", error);
-      setState((prev) => ({
-        ...prev,
+      router.push(`/verify-otp?email=${encodeURIComponent(data.email)}`);
+    } catch (err: any) {
+      console.error("register error", err);
+      setState((s) => ({
+        ...s,
         loading: false,
-        error:
-          error.response?.data?.error || error.message || "Failed to register",
+        error: err.response?.data?.error || err.message,
       }));
     }
   };
 
-  // Verify OTP function
+  // 5) Verificar OTP
   const verifyOtp = async (email: string, otp: string) => {
+    setState((s) => ({ ...s, loading: true, error: null }));
     try {
-      setState((prev) => ({ ...prev, loading: true, error: null }));
+      const res = await axios.post("/auth/verify-otp", { email, otp });
+      const token = res.data.token;
+      localStorage.setItem("accessToken", token);
+      axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
 
-      const response = await axios.post(`${API_URL}/auth/verify-otp`, {
-        email,
-        otp,
-      });
-
-      // Update token with the new one
-      localStorage.setItem("accessToken", response.data.token);
-
-      // Configure axios with the token
-      axios.defaults.headers.common[
-        "Authorization"
-      ] = `Bearer ${response.data.token}`;
-
-      // Fetch user data
-      const userResponse = await axios.get(`${API_URL}/auth/me`);
+      const userRes = await userService.getCurrentUserProfile();
+      const u = userRes.data as User;
+      localStorage.setItem("user", JSON.stringify(u));
 
       setState({
-        user: userResponse.data,
-        accessToken: response.data.token,
+        user: u,
+        accessToken: token,
         refreshToken: state.refreshToken,
         loading: false,
         error: null,
         otpSent: false,
         isAuthenticated: true,
       });
-
-      // Store user data
-      localStorage.setItem("user", JSON.stringify(userResponse.data));
-
-      // Redirect based on user role
       router.push("/dashboard");
-    } catch (error: any) {
-      console.error("OTP verification error:", error);
-      setState((prev) => ({
-        ...prev,
+    } catch (err: any) {
+      console.error("verifyOtp error", err);
+      setState((s) => ({
+        ...s,
         loading: false,
-        error: error.response?.data?.error || error.message || "Invalid OTP",
+        error: err.response?.data?.error || err.message,
       }));
     }
   };
 
-  // Logout function
+  // 6) Logout
   const logout = async () => {
-    try {
-      setState((prev) => ({ ...prev, loading: true }));
-
-      // Clear tokens and state
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("refreshToken");
-      localStorage.removeItem("user");
-
-      // Remove Authorization header
-      delete axios.defaults.headers.common["Authorization"];
-
-      setState({
-        user: null,
-        accessToken: null,
-        refreshToken: null,
-        loading: false,
-        error: null,
-        otpSent: false,
-        isAuthenticated: false,
-      });
-
-      router.push("/auth/login");
-    } catch (error) {
-      console.error("Logout error:", error);
-      setState((prev) => ({ ...prev, loading: false }));
-    }
+    setState((s) => ({ ...s, loading: true }));
+    localStorage.clear();
+    delete axios.defaults.headers.common["Authorization"];
+    setState({
+      user: null,
+      accessToken: null,
+      refreshToken: null,
+      loading: false,
+      error: null,
+      otpSent: false,
+      isAuthenticated: false,
+    });
+    router.push("/auth/login");
   };
 
-  // Clear error function
+  // 7) Limpiar error
   const clearError = () => {
-    setState((prev) => ({ ...prev, error: null }));
+    setState((s) => ({ ...s, error: null }));
   };
 
-  // Update user data
-  const updateUser = async (userData: Partial<User>) => {
+  // 8) Actualizar perfil
+  const updateUser = async (data: Partial<User>) => {
+    setState((s) => ({ ...s, loading: true }));
     try {
-      setState((prev) => ({ ...prev, loading: true }));
-      // Llamo siempre a /users/me
-      const response = await userService.updateCurrentUser(userData);
-
-      if (response.success && response.data) {
-        const updatedUser = { ...state.user!, ...response.data } as User;
-        setState((prev) => ({
-          ...prev,
-          user: updatedUser,
-          loading: false,
-        }));
-        localStorage.setItem("user", JSON.stringify(updatedUser));
-      } else {
-        throw new Error(response.error || "Failed to update user data");
-      }
-    } catch (error: any) {
-      console.error("Update user error:", error);
-      setState((prev) => ({
-        ...prev,
-        loading: false,
-        error: error.message || "Failed to update user data",
-      }));
-      throw error;
+      const res = await userService.updateCurrentUser(data);
+      const updated = { ...state.user!, ...res.data } as User;
+      localStorage.setItem("user", JSON.stringify(updated));
+      setState((s) => ({ ...s, user: updated, loading: false }));
+    } catch (err: any) {
+      console.error("updateUser error", err);
+      setState((s) => ({ ...s, loading: false, error: err.message }));
+      throw err;
     }
   };
 
-  // Helper functions to check user role
   const isTrainer = () => state.user?.role === "trainer";
   const isClient = () => state.user?.role === "client";
   const isAdmin = () => state.user?.role === "admin";
 
-  // Context value
-  const value = {
-    ...state,
-    login,
-    register,
-    verifyOtp,
-    logout,
-    clearError,
-    updateUser,
-    isTrainer,
-    isClient,
-    isAdmin,
-  };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider
+      value={{
+        ...state,
+        login,
+        register,
+        verifyOtp,
+        logout,
+        clearError,
+        updateUser,
+        isTrainer,
+        isClient,
+        isAdmin,
+      }}>
+      {children}
+    </AuthContext.Provider>
+  );
 };
 
-// Hook to use the auth context
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-  return context;
+export const useAuth = (): AuthContextType => {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
+  return ctx;
 };
