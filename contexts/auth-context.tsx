@@ -69,6 +69,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     otpSent: false,
     isAuthenticated: false,
   });
+  const [user, setUser] = useState<UserData | null>(null);
 
   // Initialize auth state from localStorage on mount
   useEffect(() => {
@@ -213,7 +214,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       }));
 
       // Redirect to OTP verification page
-      router.push("/auth/verify-otp?email=" + encodeURIComponent(email));
+      router.push("/verify-otp?email=" + encodeURIComponent(email));
     } catch (error: any) {
       console.error("Login error:", error);
 
@@ -355,15 +356,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     try {
       setState((prev) => ({ ...prev, loading: true }));
 
-      let response;
-      if (state.user?.role === "trainer") {
-        response = await userService.updateTrainerProfile(userData);
-      } else {
-        response = await userService.updateClientProfile(userData);
-      }
+      // Llamamos siempre a PUT /users/me
+      const response = await userService.updateCurrentUser(userData);
 
       if (response.success && response.data) {
-        // Update user in state and localStorage
         const updatedUser = { ...state.user, ...response.data } as User;
         setState((prev) => ({
           ...prev,
