@@ -355,12 +355,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const updateUser = async (userData: Partial<User>) => {
     try {
       setState((prev) => ({ ...prev, loading: true }));
-
-      // Llamamos siempre a PUT /users/me
+      // Llamo siempre a /users/me
       const response = await userService.updateCurrentUser(userData);
 
       if (response.success && response.data) {
-        const updatedUser = { ...state.user, ...response.data } as User;
+        const updatedUser = { ...state.user!, ...response.data } as User;
         setState((prev) => ({
           ...prev,
           user: updatedUser,
