@@ -1,3 +1,4 @@
+// src/contexts/auth-context.tsx
 "use client";
 
 import React, {
@@ -5,22 +6,31 @@ import React, {
   useState,
   useContext,
   useEffect,
-  type ReactNode,
+  ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
-import { userService, type UserData } from "@/services/user-service";
 
-// API base URL from environment variable
-const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL!;
-axios.defaults.baseURL = API_URL;
+// Configura base URL de la API
+axios.defaults.baseURL = process.env.NEXT_PUBLIC_API_BASE_URL!;
 
-// Extiende UserData con el campo role
-export type User = UserData & {
+// Define el tipo User con el campo role
+export type User = {
+  id: number;
+  email: string;
+  firstName: string;
+  lastName: string;
+  phoneNumber: string;
   role: "client" | "trainer" | "admin";
+  bio: string;
+  specialization: string;
+  facebook: string;
+  instagram: string;
+  twitter: string;
+  picture: string;
 };
 
-type AuthState = {
+interface AuthState {
   user: User | null;
   accessToken: string | null;
   refreshToken: string | null;
@@ -28,19 +38,19 @@ type AuthState = {
   error: string | null;
   otpSent: boolean;
   isAuthenticated: boolean;
-};
+}
 
-type AuthContextType = AuthState & {
-  login: (email: string) => Promise<void>;
-  register: (data: RegisterData) => Promise<void>;
-  verifyOtp: (email: string, otp: string) => Promise<void>;
-  logout: () => Promise<void>;
-  clearError: () => void;
-  updateUser: (data: Partial<User>) => Promise<void>;
-  isTrainer: () => boolean;
-  isClient: () => boolean;
-  isAdmin: () => boolean;
-};
+interface AuthContextType extends AuthState {
+  login(email: string): Promise<void>;
+  register(data: RegisterData): Promise<void>;
+  verifyOtp(email: string, otp: string): Promise<void>;
+  logout(): Promise<void>;
+  clearError(): void;
+  updateUser(data: Partial<User>): Promise<void>;
+  isTrainer(): boolean;
+  isClient(): boolean;
+  isAdmin(): boolean;
+}
 
 type RegisterData = {
   email: string;
@@ -66,12 +76,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     isAuthenticated: false,
   });
 
-  // 1) Al montar, inicializa desde localStorage o API
+  // Inicializa auth desde localStorage o API
   useEffect(() => {
     const initAuth = async () => {
       const accessToken = localStorage.getItem("accessToken");
       const refreshToken = localStorage.getItem("refreshToken");
-      const userStr = localStorage.getItem("user");
 
       if (!accessToken) {
         setState((s) => ({ ...s, loading: false }));
@@ -79,15 +88,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       }
 
       axios.defaults.headers.common["Authorization"] = `Bearer ${accessToken}`;
-
       try {
         let user: User;
-        if (userStr) {
-          user = JSON.parse(userStr);
+        const stored = localStorage.getItem("user");
+        if (stored) {
+          user = JSON.parse(stored) as User;
         } else {
-          // Uso de tu servicio para perfil propio
-          const res = await userService.getCurrentUserProfile();
-          user = res.data as User;
+          // Llama al endpoint /users/me
+          const { data: fetchedUser } = await axios.get<User>("/users/me");
+          if (!fetchedUser?.role) {
+            throw new Error("User profile missing role");
+          }
+          user = fetchedUser;
           localStorage.setItem("user", JSON.stringify(user));
         }
 
@@ -102,9 +114,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         });
       } catch (err) {
         console.error("initAuth error", err);
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("refreshToken");
-        localStorage.removeItem("user");
+        localStorage.clear();
         setState({
           user: null,
           accessToken: null,
@@ -116,11 +126,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         });
       }
     };
-
     initAuth();
   }, []);
 
-  // 2) Handler para callback de OAuth (Google, etc)
+  // OAuth callback handler
   useEffect(() => {
     const handleOAuth = async () => {
       if (typeof window === "undefined") return;
@@ -132,7 +141,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       localStorage.setItem("accessToken", at);
       localStorage.setItem("refreshToken", rt);
       axios.defaults.headers.common["Authorization"] = `Bearer ${at}`;
-
       setState((s) => ({
         ...s,
         accessToken: at,
@@ -140,13 +148,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         loading: true,
         isAuthenticated: true,
       }));
-      window.history.replaceState({}, document.title, window.location.pathname);
 
+      window.history.replaceState({}, document.title, window.location.pathname);
       try {
-        const res = await userService.getCurrentUserProfile();
-        const u = res.data as User;
-        localStorage.setItem("user", JSON.stringify(u));
-        setState((s) => ({ ...s, user: u, loading: false, error: null }));
+        const { data: userData } = await axios.get<User>("/users/me");
+        if (!userData?.role) {
+          throw new Error("User profile missing role");
+        }
+        localStorage.setItem("user", JSON.stringify(userData));
+        setState((s) => ({
+          ...s,
+          user: userData,
+          loading: false,
+          error: null,
+        }));
       } catch (err) {
         console.error("OAuth fetch user error", err);
         setState((s) => ({
@@ -156,20 +171,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         }));
       }
     };
-
     handleOAuth();
   }, []);
 
-  // 3) Enviar OTP (login)
+  // Login envía OTP
   const login = async (email: string) => {
     setState((s) => ({ ...s, loading: true, error: null }));
     try {
-      const res = await axios.post("/auth/login", { email });
-      const { accessToken, refreshToken } = res.data;
+      const { accessToken, refreshToken } = (
+        await axios.post("/auth/login", { email })
+      ).data;
       localStorage.setItem("accessToken", accessToken);
       localStorage.setItem("refreshToken", refreshToken);
       axios.defaults.headers.common["Authorization"] = `Bearer ${accessToken}`;
-
       setState((s) => ({
         ...s,
         accessToken,
@@ -181,29 +195,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       router.push(`/verify-otp?email=${encodeURIComponent(email)}`);
     } catch (err: any) {
       console.error("login error", err);
+      const message =
+        err.response?.data?.nextStep === "register"
+          ? "Usuario no encontrado. Regístrate primero."
+          : err.response?.data?.error || err.message;
+      setState((s) => ({ ...s, loading: false, error: message }));
       if (err.response?.data?.nextStep === "register") {
-        setState((s) => ({
-          ...s,
-          loading: false,
-          error: "Usuario no encontrado. Regístrate primero.",
-        }));
         router.push(`/auth/register?email=${encodeURIComponent(email)}`);
-      } else {
-        setState((s) => ({
-          ...s,
-          loading: false,
-          error: err.response?.data?.error || err.message,
-        }));
       }
     }
   };
 
-  // 4) Registro + OTP
+  // Registro + OTP
   const register = async (data: RegisterData) => {
     setState((s) => ({ ...s, loading: true, error: null }));
     try {
-      const res = await axios.post("/auth/register", data);
-      const token = res.data.token;
+      const { token } = (await axios.post("/auth/register", data)).data;
       localStorage.setItem("accessToken", token);
       axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
       setState((s) => ({
@@ -223,21 +230,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     }
   };
 
-  // 5) Verificar OTP
+  // Verificar OTP
   const verifyOtp = async (email: string, otp: string) => {
     setState((s) => ({ ...s, loading: true, error: null }));
     try {
-      const res = await axios.post("/auth/verify-otp", { email, otp });
-      const token = res.data.token;
+      const { token } = (await axios.post("/auth/verify-otp", { email, otp }))
+        .data;
       localStorage.setItem("accessToken", token);
       axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-
-      const userRes = await userService.getCurrentUserProfile();
-      const u = userRes.data as User;
-      localStorage.setItem("user", JSON.stringify(u));
-
+      // Llama a /users/me para obtener perfil
+      const { data: userData } = await axios.get<User>("/users/me");
+      if (!userData?.role) {
+        throw new Error("User profile missing role");
+      }
+      localStorage.setItem("user", JSON.stringify(userData));
       setState({
-        user: u,
+        user: userData,
         accessToken: token,
         refreshToken: state.refreshToken,
         loading: false,
@@ -256,7 +264,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     }
   };
 
-  // 6) Logout
   const logout = async () => {
     setState((s) => ({ ...s, loading: true }));
     localStorage.clear();
@@ -273,17 +280,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     router.push("/auth/login");
   };
 
-  // 7) Limpiar error
-  const clearError = () => {
-    setState((s) => ({ ...s, error: null }));
-  };
-
-  // 8) Actualizar perfil
+  const clearError = () => setState((s) => ({ ...s, error: null }));
   const updateUser = async (data: Partial<User>) => {
     setState((s) => ({ ...s, loading: true }));
     try {
-      const res = await userService.updateCurrentUser(data);
-      const updated = { ...state.user!, ...res.data } as User;
+      const { data: updated } = await axios.put<User>("/users/me", data);
       localStorage.setItem("user", JSON.stringify(updated));
       setState((s) => ({ ...s, user: updated, loading: false }));
     } catch (err: any) {
@@ -292,10 +293,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       throw err;
     }
   };
-
-  const isTrainer = () => state.user?.role === "trainer";
-  const isClient = () => state.user?.role === "client";
-  const isAdmin = () => state.user?.role === "admin";
 
   return (
     <AuthContext.Provider
@@ -307,16 +304,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         logout,
         clearError,
         updateUser,
-        isTrainer,
-        isClient,
-        isAdmin,
+        isTrainer: () => state.user?.role === "trainer",
+        isClient: () => state.user?.role === "client",
+        isAdmin: () => state.user?.role === "admin",
       }}>
       {children}
     </AuthContext.Provider>
   );
 };
 
-export const useAuth = (): AuthContextType => {
+export const useAuth = () => {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error("useAuth must be used within AuthProvider");
   return ctx;

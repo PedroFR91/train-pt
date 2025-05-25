@@ -44,7 +44,7 @@ export function AppSidebar() {
   const trainerMenuItems = [
     { title: "Dashboard", icon: Home, href: "/dashboard" },
     // { title: "Clientes", icon: Users, href: "/clients" },
-    // { title: "Rutinas", icon: Dumbbell, href: "/routines" },
+    { title: "Rutinas", icon: Dumbbell, href: "/routines" },
     // { title: "Dietas", icon: Utensils, href: "/diets" },
     // { title: "Formularios", icon: FileText, href: "/forms" },
     // { title: "Archivos", icon: FolderOpen, href: "/files" },
@@ -69,7 +69,7 @@ export function AppSidebar() {
 
   const handleLogout = async () => {
     await logout();
-    router.push("/auth/login");
+    router.push("/login");
   };
 
   return (
