@@ -8,6 +8,24 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { RoutineCard } from "@/components/routines/routine-card";
+import React from "react";
+
+type Routine = {
+  id: number;
+  name: string;
+  type: string;
+  difficulty: string;
+  duration: string;
+  description?: string;
+  goal?: string;
+  workouts: any[];
+  schedule?: Record<string, number>;
+};
+
+type RoutinesListProps = {
+  routines: Routine[];
+  onEdit: (routine: Routine) => void;
+};
 
 const dummyRoutines = [
   {
@@ -31,17 +49,16 @@ const dummyRoutines = [
     difficulty: "Principiante",
     duration: "30 min",
   },
-  // ... más rutinas
 ];
 
-export function RoutinesList() {
+export function RoutinesList({ routines, onEdit }: RoutinesListProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState("all");
 
-  const filteredRoutines = dummyRoutines.filter(
+  const filteredRoutines = routines.filter(
     (routine) =>
       routine.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
-      (filter === "all" || routine.type.toLowerCase() === filter)
+      (filter === "all" || routine.goal?.toLowerCase() === filter)
   );
 
   return (

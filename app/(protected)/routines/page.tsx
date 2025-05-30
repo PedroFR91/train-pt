@@ -8,15 +8,7 @@ import { RoutinesList } from "@/components/routines/routines-list";
 import { Button } from "@/components/ui/button";
 import { ModernWizard } from "@/components/ui/ModernWizard";
 
-type Routine = {
-  id: number;
-  name: string;
-  description?: string;
-  goal?: string;
-  duration: number;
-  workouts: any[];
-  schedule?: Record<string, number>;
-};
+import { Routine } from "../../../types/routine";
 
 export default function RoutinesPage() {
   const [routines, setRoutines] = useState<Routine[]>([]);
