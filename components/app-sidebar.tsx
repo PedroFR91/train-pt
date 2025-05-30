@@ -121,13 +121,13 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={pathname === "/profile/public"}
-                    tooltip='Perfil Público'>
-                    <Link href='/profile/public'>
+                  <SidebarMenuButton asChild tooltip='Ver perfil público'>
+                    <Link
+                      href={`/trainer/${user?.id}`}
+                      target='_blank'
+                      rel='noopener noreferrer'>
                       <User className='h-5 w-5' />
-                      <span>Perfil Público</span>
+                      <span>Ver Perfil Público</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
